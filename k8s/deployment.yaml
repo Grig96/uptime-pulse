@@ -1,0 +1,108 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: uptime-checker
+  labels:
+    app: uptime-checker
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: uptime-checker
+  namespace: uptime-checker
+  labels:
+    app: uptime-checker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: uptime-checker
+  template:
+    metadata:
+      labels:
+        app: uptime-checker
+    spec:
+      containers:
+        - name: uptime-checker
+          image: uptime-checker:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: false
+      restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: uptime-checker
+  namespace: uptime-checker
+  labels:
+    app: uptime-checker
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+      name: http
+  selector:
+    app: uptime-checker
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: uptime-checker
+  namespace: uptime-checker
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    # Uncomment for TLS with cert-manager
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: uptime.example.com  # Change to your domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: uptime-checker
+                port:
+                  number: 80
+  # Uncomment for TLS
+  # tls:
+  #   - hosts:
+  #       - uptime.example.com
+  #     secretName: uptime-checker-tls

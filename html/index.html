@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uptime Pulse | Service Monitor</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0b;
+            --bg-secondary: #111113;
+            --bg-card: #161618;
+            --border: #2a2a2d;
+            --text-primary: #fafafa;
+            --text-secondary: #888;
+            --text-muted: #555;
+            --accent-green: #22c55e;
+            --accent-green-dim: rgba(34, 197, 94, 0.15);
+            --accent-red: #ef4444;
+            --accent-red-dim: rgba(239, 68, 68, 0.15);
+            --accent-yellow: #eab308;
+            --accent-yellow-dim: rgba(234, 179, 8, 0.15);
+            --accent-blue: #3b82f6;
+            --accent-blue-dim: rgba(59, 130, 246, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .noise-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.03;
+            z-index: 1000;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        header {
+            margin-bottom: 48px;
+            animation: fadeInDown 0.6s ease-out;
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-icon svg {
+            width: 18px;
+            height: 18px;
+            color: var(--bg-primary);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+
+        .tagline {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .input-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 32px;
+            animation: fadeInUp 0.6s ease-out 0.1s both;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .input-wrapper::before {
+            content: 'https://';
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 14px 16px 14px 76px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px var(--accent-blue-dim);
+        }
+
+        input[type="text"]::placeholder {
+            color: var(--text-muted);
+        }
+
+        .check-btn {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, var(--accent-green), #16a34a);
+            border: none;
+            border-radius: 10px;
+            color: var(--bg-primary);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .check-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(34, 197, 94, 0.3);
+        }
+
+        .check-btn:active {
+            transform: translateY(0);
+        }
+
+        .check-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .check-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .check-btn.loading svg {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .results-section {
+            animation: fadeInUp 0.6s ease-out 0.2s both;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .clear-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .clear-btn:hover {
+            color: var(--text-secondary);
+        }
+
+        .results-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .result-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            animation: slideIn 0.4s ease-out;
+            transition: border-color 0.2s ease;
+        }
+
+        .result-card:hover {
+            border-color: var(--text-muted);
+        }
+
+        .result-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .result-url {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            word-break: break-all;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+
+        .status-badge.up {
+            background: var(--accent-green-dim);
+            color: var(--accent-green);
+        }
+
+        .status-badge.down {
+            background: var(--accent-red-dim);
+            color: var(--accent-red);
+        }
+
+        .status-badge.slow {
+            background: var(--accent-yellow-dim);
+            color: var(--accent-yellow);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .status-badge.up .status-dot {
+            animation: pulse 2s infinite;
+        }
+
+        .result-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .metric {
+            background: var(--bg-secondary);
+            padding: 12px 14px;
+            border-radius: 8px;
+        }
+
+        .metric-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+
+        .metric-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .metric-value.fast { color: var(--accent-green); }
+        .metric-value.medium { color: var(--accent-yellow); }
+        .metric-value.slow { color: var(--accent-red); }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state p {
+            font-size: 0.95rem;
+        }
+
+        .error-message {
+            background: var(--accent-red-dim);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 10px;
+            padding: 14px 18px;
+            color: var(--accent-red);
+            font-size: 0.9rem;
+            margin-bottom: 16px;
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        footer {
+            margin-top: 60px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            animation: fadeInUp 0.6s ease-out 0.3s both;
+        }
+
+        footer a {
+            color: var(--text-secondary);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            color: var(--text-primary);
+        }
+
+        @media (max-width: 600px) {
+            .input-group {
+                flex-direction: column;
+            }
+
+            .check-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .result-header {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .status-badge {
+                align-self: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="noise-overlay"></div>
+    
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                </div>
+                <h1>Uptime Pulse</h1>
+            </div>
+            <p class="tagline">Real-time service availability monitoring</p>
+        </header>
+
+        <section class="input-section">
+            <div class="error-message" id="errorMessage"></div>
+            <div class="input-group">
+                <div class="input-wrapper">
+                    <input type="text" id="urlInput" placeholder="example.com" autocomplete="off" spellcheck="false">
+                </div>
+                <button class="check-btn" id="checkBtn" onclick="checkUptime()">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    Check Status
+                </button>
+            </div>
+        </section>
+
+        <section class="results-section">
+            <div class="section-header">
+                <span class="section-title">Recent Checks</span>
+                <button class="clear-btn" onclick="clearResults()">Clear All</button>
+            </div>
+            <div class="results-list" id="resultsList">
+                <div class="empty-state" id="emptyState">
+                    <svg class="empty-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    <p>Enter a URL above to check its status</p>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <p>Built for DevOps engineers • Self-hosted proxy for reliable checks</p>
+        </footer>
+    </div>
+
+    <script>
+        const urlInput = document.getElementById('urlInput');
+        const checkBtn = document.getElementById('checkBtn');
+        const resultsList = document.getElementById('resultsList');
+        const emptyState = document.getElementById('emptyState');
+        const errorMessage = document.getElementById('errorMessage');
+
+        let results = [];
+
+        urlInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') checkUptime();
+        });
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('show');
+            setTimeout(() => errorMessage.classList.remove('show'), 5000);
+        }
+
+        function hideError() {
+            errorMessage.classList.remove('show');
+        }
+
+        function formatUrl(input) {
+            let url = input.trim();
+            if (!url) return null;
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                url = 'https://' + url;
+            }
+            try {
+                new URL(url);
+                return url;
+            } catch {
+                return null;
+            }
+        }
+
+        function getResponseTimeClass(ms) {
+            if (ms < 500) return 'fast';
+            if (ms < 1500) return 'medium';
+            return 'slow';
+        }
+
+        function getStatusInfo(status, responseTime) {
+            if (status >= 200 && status < 400) {
+                if (responseTime > 2000) {
+                    return { class: 'slow', text: 'Slow' };
+                }
+                return { class: 'up', text: 'Online' };
+            }
+            return { class: 'down', text: 'Down' };
+        }
+
+        async function checkUptime() {
+            hideError();
+            const url = formatUrl(urlInput.value);
+            
+            if (!url) {
+                showError('Please enter a valid URL');
+                return;
+            }
+
+            checkBtn.disabled = true;
+            checkBtn.classList.add('loading');
+            checkBtn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Checking...
+            `;
+
+            const startTime = performance.now();
+            
+            try {
+                const response = await fetch(`/api/check?url=${encodeURIComponent(url)}`, {
+                    signal: AbortSignal.timeout(15000)
+                });
+                
+                const data = await response.json();
+                const endTime = performance.now();
+                
+                if (data.error) {
+                    addResult({
+                        url: url,
+                        status: 0,
+                        responseTime: data.responseTime || Math.round(endTime - startTime),
+                        timestamp: new Date(),
+                        error: data.error === 'TIMEOUT' ? 'Timeout' : 'Unreachable'
+                    });
+                } else {
+                    addResult({
+                        url: url,
+                        status: data.status,
+                        responseTime: data.responseTime,
+                        timestamp: new Date()
+                    });
+                }
+                
+            } catch (error) {
+                const endTime = performance.now();
+                addResult({
+                    url: url,
+                    status: 0,
+                    responseTime: Math.round(endTime - startTime),
+                    timestamp: new Date(),
+                    error: error.name === 'TimeoutError' ? 'Timeout' : 'Error'
+                });
+            }
+
+            checkBtn.disabled = false;
+            checkBtn.classList.remove('loading');
+            checkBtn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                Check Status
+            `;
+            urlInput.value = '';
+        }
+
+        function addResult(result) {
+            results.unshift(result);
+            if (results.length > 10) results.pop();
+            renderResults();
+        }
+
+        function clearResults() {
+            results = [];
+            renderResults();
+        }
+
+        function renderResults() {
+            if (results.length === 0) {
+                resultsList.innerHTML = `
+                    <div class="empty-state" id="emptyState">
+                        <svg class="empty-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                        <p>Enter a URL above to check its status</p>
+                    </div>
+                `;
+                return;
+            }
+
+            resultsList.innerHTML = results.map(result => {
+                const statusInfo = result.error 
+                    ? { class: 'down', text: result.error }
+                    : getStatusInfo(result.status, result.responseTime);
+                const timeClass = getResponseTimeClass(result.responseTime);
+                const timeStr = result.timestamp.toLocaleTimeString();
+                
+                return `
+                    <div class="result-card">
+                        <div class="result-header">
+                            <span class="result-url">${result.url}</span>
+                            <span class="status-badge ${statusInfo.class}">
+                                <span class="status-dot"></span>
+                                ${statusInfo.text}
+                            </span>
+                        </div>
+                        <div class="result-metrics">
+                            <div class="metric">
+                                <div class="metric-label">Response Time</div>
+                                <div class="metric-value ${timeClass}">${result.responseTime}ms</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Status Code</div>
+                                <div class="metric-value">${result.status || '—'}</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Checked At</div>
+                                <div class="metric-value">${timeStr}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Initialize
+        renderResults();
+    </script>
+</body>
+</html>
